@@ -18,7 +18,7 @@ spec:
       type: secret
       name: perses-basic-auth
       username: testuser
-      password_path: password
+      passwordPath: password
     tls:
       enable: true
       insecureSkipVerify: true
