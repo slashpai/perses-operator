@@ -489,18 +489,6 @@ HELM_CHART_DIR = charts/perses-operator
 HELM_NAMESPACE ?= perses-operator-system
 HELM_RELEASE ?= perses-operator
 
-.PHONY: helm-generate
-helm-generate: manifests generate kustomize kubebuilder ## Generate Helm chart from kustomize output using kubebuilder plugin.
-	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	mkdir -p dist
-	$(KUSTOMIZE) build config/default > dist/install.yaml
-	$(KUBEBUILDER) edit --plugins=helm/v2-alpha --output-dir=$(HELM_CHART_DIR)
-	git checkout -- bundle.yaml
-	cp -a $(HELM_CHART_DIR)/chart/. $(HELM_CHART_DIR)/
-	rm -rf $(HELM_CHART_DIR)/chart
-	rm -f .github/workflows/test-chart.yml
-	rm -rf dist
-
 .PHONY: helm-lint
 helm-lint: helm ## Lint the Helm chart.
 	$(HELM) lint $(HELM_CHART_DIR)
