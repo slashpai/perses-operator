@@ -249,3 +249,30 @@ validate-tools: build-tools ## Validate that all tools are installed and working
 	@echo -n "  opm: " && $(OPM) version 2>&1 | head -n 1
 	@echo -n "  kuttl: " && $(KUTTL) version 2>&1 | head -n 1
 	@echo "✅ All tools validated successfully!"
+
+## Helm Tools - not included in build-tools or validate-tools, installed on demand by helm targets
+
+HELM = $(LOCALBIN)/helm
+HELM_VERSION = v3.17.3
+
+KUBEBUILDER = $(LOCALBIN)/kubebuilder
+KUBEBUILDER_VERSION = v4.12.0
+
+.PHONY: helm
+$(HELM) helm: $(LOCALBIN) ## Install helm locally if necessary.
+	@{ \
+		set -ex ;\
+		[[ -f $(HELM) ]] && exit 0 ;\
+		OS=$$(go env GOOS) && ARCH=$$(go env GOARCH) && \
+		curl -sSL https://get.helm.sh/helm-$(HELM_VERSION)-$${OS}-$${ARCH}.tar.gz | tar xz -C $(LOCALBIN) --strip-components=1 $${OS}-$${ARCH}/helm ;\
+	}
+
+.PHONY: kubebuilder
+$(KUBEBUILDER) kubebuilder: $(LOCALBIN) ## Install kubebuilder locally if necessary.
+	@{ \
+		set -ex ;\
+		[[ -f $(KUBEBUILDER) ]] && exit 0 ;\
+		OS=$$(go env GOOS) && ARCH=$$(go env GOARCH) && \
+		curl -sSLo $(KUBEBUILDER) https://github.com/kubernetes-sigs/kubebuilder/releases/download/$(KUBEBUILDER_VERSION)/kubebuilder_$${OS}_$${ARCH} ;\
+		chmod +x $(KUBEBUILDER) ;\
+	}

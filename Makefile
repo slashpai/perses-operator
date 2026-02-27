@@ -483,6 +483,62 @@ catalog-build: check-container-runtime opm ## Build a catalog image.
 catalog-push: ## Push a catalog image.
 	$(MAKE) image-push IMG=$(CATALOG_IMG)
 
+##@ Helm
+
+HELM_CHART_DIR = charts/perses-operator
+HELM_NAMESPACE ?= perses-operator-system
+HELM_RELEASE ?= perses-operator
+
+.PHONY: helm-generate
+helm-generate: manifests generate kustomize kubebuilder ## Generate Helm chart from kustomize output using kubebuilder plugin.
+	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+	mkdir -p dist
+	$(KUSTOMIZE) build config/default > dist/install.yaml
+	$(KUBEBUILDER) edit --plugins=helm/v2-alpha --output-dir=$(HELM_CHART_DIR)
+	git checkout -- bundle.yaml
+	cp -a $(HELM_CHART_DIR)/chart/. $(HELM_CHART_DIR)/
+	rm -rf $(HELM_CHART_DIR)/chart
+	rm -f .github/workflows/test-chart.yml
+	rm -rf dist
+
+.PHONY: helm-lint
+helm-lint: helm ## Lint the Helm chart.
+	$(HELM) lint $(HELM_CHART_DIR)
+
+.PHONY: helm-template
+helm-template: helm ## Render Helm chart templates locally for validation.
+	$(HELM) template perses-operator $(HELM_CHART_DIR)
+
+.PHONY: helm-package
+helm-package: helm ## Package the Helm chart into a .tgz archive.
+	$(HELM) package $(HELM_CHART_DIR)
+
+.PHONY: helm-deploy
+helm-deploy: helm ## Deploy manager to the K8s cluster via Helm. Specify an image with IMG.
+	$(HELM) upgrade --install $(HELM_RELEASE) $(HELM_CHART_DIR) \
+		--namespace $(HELM_NAMESPACE) \
+		--create-namespace \
+		--set manager.image.repository=$${IMG%:*} \
+		--set manager.image.tag=$${IMG##*:} \
+		--wait \
+		--timeout 5m
+
+.PHONY: helm-uninstall
+helm-uninstall: helm ## Uninstall the Helm release from the K8s cluster.
+	$(HELM) uninstall $(HELM_RELEASE) --namespace $(HELM_NAMESPACE)
+
+.PHONY: helm-status
+helm-status: helm ## Show Helm release status.
+	$(HELM) status $(HELM_RELEASE) --namespace $(HELM_NAMESPACE)
+
+.PHONY: helm-history
+helm-history: helm ## Show Helm release history.
+	$(HELM) history $(HELM_RELEASE) --namespace $(HELM_NAMESPACE)
+
+.PHONY: helm-rollback
+helm-rollback: helm ## Rollback to previous Helm release.
+	$(HELM) rollback $(HELM_RELEASE) --namespace $(HELM_NAMESPACE)
+
 .PHONY: generate-goreleaser
 generate-goreleaser:
 	go run ./scripts/generate-goreleaser/generate-goreleaser.go
