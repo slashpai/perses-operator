@@ -151,6 +151,7 @@ make undeploy
 
 - [API Reference](https://perses.dev/perses-operator/docs/api/)
 - [Metrics](docs/metrics.md)
+- [Helm Chart](charts/perses-operator/README.md)
 
 ### Example Configs
 

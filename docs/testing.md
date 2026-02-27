@@ -99,6 +99,10 @@ kubectl logs -n perses-operator-system deployment/perses-operator-controller-man
 bin/kubectl-kuttl test --config test/e2e/kuttl-test.yaml --test perses-statefulset
 ```
 
+## Helm Chart Tests
+
+See [charts/perses-operator/README.md](../charts/perses-operator/README.md) for Helm chart testing instructions.
+
 ## Alerting Rule Tests
 
 > [!NOTE]

@@ -539,6 +539,52 @@ helm-history: helm ## Show Helm release history.
 helm-rollback: helm ## Rollback to previous Helm release.
 	$(HELM) rollback $(HELM_RELEASE) --namespace $(HELM_NAMESPACE)
 
+HELM_KIND_CLUSTER ?= perses-helm-test
+HELM_TEST_IMG ?= $(IMAGE_TAG_BASE):helm-test
+
+.PHONY: helm-test-image
+helm-test-image: check-container-runtime ## Build a lightweight operator image for Helm testing.
+	@echo ">> Building operator binary for linux..."
+	GOOS=linux GOARCH=$$(go env GOARCH) go build -mod=readonly -o bin/manager main.go
+	@echo ">> Building operator image..."
+	printf 'FROM gcr.io/distroless/static-debian12\nCOPY bin/manager /bin/manager\nENTRYPOINT ["/bin/manager"]\n' > Dockerfile.helm-test
+	$(CONTAINER_RUNTIME) build -t $(HELM_TEST_IMG) -f Dockerfile.helm-test .
+	rm -f Dockerfile.helm-test
+
+.PHONY: helm-e2e-deploy
+helm-e2e-deploy: helm helm-test-image ## Build operator image, load into kind, install cert-manager and deploy via Helm.
+	kubectl config use-context kind-$(HELM_KIND_CLUSTER)
+	@echo ">> Loading image into kind cluster..."
+ifeq ($(CONTAINER_RUNTIME),podman)
+	$(CONTAINER_RUNTIME) save -o /tmp/perses-operator-helm.tar $(HELM_TEST_IMG)
+	kind load image-archive /tmp/perses-operator-helm.tar --name $(HELM_KIND_CLUSTER)
+	rm -f /tmp/perses-operator-helm.tar
+else
+	kind load docker-image $(HELM_TEST_IMG) --name $(HELM_KIND_CLUSTER)
+endif
+	@echo ">> Installing cert-manager..."
+	$(MAKE) install-cert-manager
+	@echo ">> Deploying via Helm..."
+	$(HELM) upgrade --install $(HELM_RELEASE) $(HELM_CHART_DIR) \
+		--namespace $(HELM_NAMESPACE) \
+		--create-namespace \
+		--set manager.image.tag=helm-test \
+		--set manager.image.pullPolicy=Never \
+		--wait \
+		--timeout 5m
+	@echo ">> Helm deployment successful!"
+	kubectl -n $(HELM_NAMESPACE) get pods
+
+.PHONY: helm-test-setup
+helm-test-setup: ## Create kind cluster and deploy via Helm (for local testing).
+	@echo ">> Creating kind cluster..."
+	kind create cluster --name $(HELM_KIND_CLUSTER) --image $(KIND_NODE_IMAGE) --wait 5m 2>/dev/null || true
+	$(MAKE) helm-e2e-deploy
+
+.PHONY: helm-test-cleanup
+helm-test-cleanup: ## Delete kind cluster used for Helm testing.
+	kind delete cluster --name $(HELM_KIND_CLUSTER)
+
 .PHONY: generate-goreleaser
 generate-goreleaser:
 	go run ./scripts/generate-goreleaser/generate-goreleaser.go
