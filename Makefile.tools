@@ -255,6 +255,9 @@ validate-tools: build-tools ## Validate that all tools are installed and working
 HELM = $(LOCALBIN)/helm
 HELM_VERSION = v3.17.3
 
+HELM_DOCS = $(LOCALBIN)/helm-docs
+HELM_DOCS_VERSION = v1.14.2
+
 KUBEBUILDER = $(LOCALBIN)/kubebuilder
 KUBEBUILDER_VERSION = v4.12.0
 
@@ -266,6 +269,10 @@ $(HELM) helm: $(LOCALBIN) ## Install helm locally if necessary.
 		OS=$$(go env GOOS) && ARCH=$$(go env GOARCH) && \
 		curl -sSL https://get.helm.sh/helm-$(HELM_VERSION)-$${OS}-$${ARCH}.tar.gz | tar xz -C $(LOCALBIN) --strip-components=1 $${OS}-$${ARCH}/helm ;\
 	}
+
+.PHONY: helm-docs
+$(HELM_DOCS) helm-docs: ## Install helm-docs locally if necessary.
+	GOBIN=$(LOCALBIN) go install github.com/norwoodj/helm-docs/cmd/helm-docs@$(HELM_DOCS_VERSION)
 
 .PHONY: kubebuilder
 $(KUBEBUILDER) kubebuilder: $(LOCALBIN) ## Install kubebuilder locally if necessary.

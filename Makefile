@@ -493,6 +493,10 @@ HELM_RELEASE ?= perses-operator
 helm-lint: helm ## Lint the Helm chart.
 	$(HELM) lint $(HELM_CHART_DIR)
 
+.PHONY: helm-generate-docs
+helm-generate-docs: $(HELM_DOCS) ## Generate Helm chart README from values.yaml comments.
+	$(HELM_DOCS) --chart-search-root charts
+
 .PHONY: helm-template
 helm-template: helm ## Render Helm chart templates locally for validation.
 	$(HELM) template perses-operator $(HELM_CHART_DIR)

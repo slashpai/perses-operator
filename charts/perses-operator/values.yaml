@@ -1,49 +1,45 @@
-## String to partially override chart.fullname template (will maintain the release name)
-##
+# -- String to partially override chart.fullname template (will maintain the release name)
 # nameOverride: ""
 
-## String to fully override chart.fullname template
-##
+# -- String to fully override chart.fullname template
 # fullnameOverride: ""
 
 ## Configure the controller manager deployment
 ##
 manager:
+  # -- Number of operator replicas
   replicas: 1
-  
+
   image:
+    # -- Operator image repository
     repository: docker.io/persesdev/perses-operator
+    # -- Operator image tag
     tag: v0.2.0
+    # -- Image pull policy
     pullPolicy: IfNotPresent
 
-  ## Arguments
-  ##
+  # -- Extra arguments passed to the manager container
   args:
     - --leader-elect
 
-  ## Environment variables
-  ##
+  # -- Environment variables for the manager container
   env: []
 
-  ## Image pull secrets
-  ##
+  # -- Image pull secrets
   imagePullSecrets: []
 
-  ## Pod-level security settings
-  ##
+  # -- Pod-level security context
   podSecurityContext: {}
     # fsGroup: 2000
 
-  ## Container-level security settings
-  ##
+  # -- Container-level security context
   securityContext:
     allowPrivilegeEscalation: false
     capabilities:
         drop:
             - ALL
 
-  ## Resource limits and requests
-  ##
+  # -- Resource limits and requests for the manager container
   resources:
     limits:
         cpu: 500m
@@ -52,8 +48,7 @@ manager:
         cpu: 10m
         memory: 64Mi
 
-  ## Manager pod's affinity
-  ##
+  # -- Affinity rules for manager pods
   affinity:
     nodeAffinity:
         requiredDuringSchedulingIgnoredDuringExecution:
@@ -71,20 +66,21 @@ manager:
                       values:
                         - linux
 
-  ## Manager pod's node selector
-  ##
+  # -- Node selector for manager pods
   nodeSelector: {}
 
-  ## Manager pod's tolerations
-  ##
+  # -- Tolerations for manager pods
   tolerations: []
 
 ## Kube RBAC Proxy sidecar configuration
 ##
 kubeRbacProxy:
   image:
+    # -- kube-rbac-proxy image repository
     repository: gcr.io/kubebuilder/kube-rbac-proxy
+    # -- kube-rbac-proxy image tag
     tag: v0.13.1
+  # -- Resource limits and requests for the kube-rbac-proxy container
   resources:
     limits:
       cpu: 500m
@@ -92,6 +88,7 @@ kubeRbacProxy:
     requests:
       cpu: 5m
       memory: 64Mi
+  # -- Security context for the kube-rbac-proxy container
   securityContext:
     allowPrivilegeEscalation: false
     capabilities:
@@ -101,41 +98,41 @@ kubeRbacProxy:
 ## Helper RBAC roles for managing custom resources
 ##
 rbacHelpers:
-  # Install convenience admin/editor/viewer roles for CRDs
+  # -- Install convenience admin/editor/viewer roles for CRDs
   enable: false
 
 ## Custom Resource Definitions
 ##
 crd:
-  # Install CRDs with the chart
+  # -- Install CRDs with the chart
   enable: true
-  # Keep CRDs when uninstalling
+  # -- Keep CRDs when uninstalling
   keep: true
 
-## Controller metrics endpoint.
-## Enable to expose /metrics endpoint with RBAC protection.
+## Controller metrics endpoint
 ##
 metrics:
+  # -- Enable metrics endpoint with RBAC protection
   enable: true
-  # Metrics server port
+  # -- Metrics server port
   port: 8082
 
-## Cert-manager integration for TLS certificates.
-## Required for webhook certificates and metrics endpoint certificates.
+## Cert-manager integration for TLS certificates
 ##
 certManager:
+  # -- Enable cert-manager integration (required for webhook certificates)
   enable: true
 
 ## Webhook server configuration
 ##
 webhook:
+  # -- Enable conversion webhooks
   enable: true
-  # Webhook server port
+  # -- Webhook server port
   port: 9443
 
-## Prometheus ServiceMonitor for metrics scraping.
-## Requires prometheus-operator to be installed in the cluster.
+## Prometheus ServiceMonitor for metrics scraping
 ##
 prometheus:
+  # -- Enable ServiceMonitor (requires prometheus-operator)
   enable: false
-

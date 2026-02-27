@@ -1,6 +1,6 @@
-# perses-operator Helm Chart
+# perses-operator
 
-A Helm chart for deploying the [Perses Operator](https://github.com/perses/perses-operator) on Kubernetes.
+A Helm chart for the Perses Operator - manages Perses instances and dashboards on Kubernetes
 
 ## Prerequisites
 
@@ -16,27 +16,36 @@ helm install perses-operator charts/perses-operator \
   --create-namespace
 ```
 
-## Configuration
+## Values
 
-See [values.yaml](values.yaml) for the full list of configurable parameters.
-
-Key configuration options:
-
-| Parameter | Description | Default |
-| --------- | ----------- | ------- |
-| `manager.replicas` | Number of operator replicas | `1` |
-| `manager.image.repository` | Operator image repository | `docker.io/persesdev/perses-operator` |
-| `manager.image.tag` | Operator image tag | `v0.2.0` |
-| `manager.image.pullPolicy` | Image pull policy | `IfNotPresent` |
-| `manager.resources` | Manager container resources | CPU: 10m-500m, Memory: 64Mi-128Mi |
-| `kubeRbacProxy.image.repository` | kube-rbac-proxy image | `gcr.io/kubebuilder/kube-rbac-proxy` |
-| `kubeRbacProxy.image.tag` | kube-rbac-proxy image tag | `v0.13.1` |
-| `crd.enable` | Install CRDs with the chart | `true` |
-| `crd.keep` | Keep CRDs when uninstalling | `true` |
-| `certManager.enable` | Enable cert-manager integration | `true` |
-| `webhook.enable` | Enable conversion webhooks | `true` |
-| `metrics.enable` | Enable metrics endpoint | `true` |
-| `prometheus.enable` | Enable ServiceMonitor | `false` |
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| certManager.enable | bool | `true` | Enable cert-manager integration (required for webhook certificates) |
+| crd.enable | bool | `true` | Install CRDs with the chart |
+| crd.keep | bool | `true` | Keep CRDs when uninstalling |
+| kubeRbacProxy.image.repository | string | `"gcr.io/kubebuilder/kube-rbac-proxy"` | kube-rbac-proxy image repository |
+| kubeRbacProxy.image.tag | string | `"v0.13.1"` | kube-rbac-proxy image tag |
+| kubeRbacProxy.resources | object | `{"limits":{"cpu":"500m","memory":"128Mi"},"requests":{"cpu":"5m","memory":"64Mi"}}` | Resource limits and requests for the kube-rbac-proxy container |
+| kubeRbacProxy.securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]}}` | Security context for the kube-rbac-proxy container |
+| manager.affinity | object | `{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/arch","operator":"In","values":["amd64","arm64","ppc64le","s390x"]},{"key":"kubernetes.io/os","operator":"In","values":["linux"]}]}]}}}` | Affinity rules for manager pods |
+| manager.args | list | `["--leader-elect"]` | Extra arguments passed to the manager container |
+| manager.env | list | `[]` | Environment variables for the manager container |
+| manager.image.pullPolicy | string | `"IfNotPresent"` | Image pull policy |
+| manager.image.repository | string | `"docker.io/persesdev/perses-operator"` | Operator image repository |
+| manager.image.tag | string | `"v0.2.0"` | Operator image tag |
+| manager.imagePullSecrets | list | `[]` | Image pull secrets |
+| manager.nodeSelector | object | `{}` | Node selector for manager pods |
+| manager.podSecurityContext | object | `{}` | Pod-level security context |
+| manager.replicas | int | `1` | Number of operator replicas |
+| manager.resources | object | `{"limits":{"cpu":"500m","memory":"128Mi"},"requests":{"cpu":"10m","memory":"64Mi"}}` | Resource limits and requests for the manager container |
+| manager.securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]}}` | Container-level security context |
+| manager.tolerations | list | `[]` | Tolerations for manager pods |
+| metrics.enable | bool | `true` | Enable metrics endpoint with RBAC protection |
+| metrics.port | int | `8082` | Metrics server port |
+| prometheus.enable | bool | `false` | Enable ServiceMonitor (requires prometheus-operator) |
+| rbacHelpers.enable | bool | `false` | Install convenience admin/editor/viewer roles for CRDs |
+| webhook.enable | bool | `true` | Enable conversion webhooks |
+| webhook.port | int | `9443` | Webhook server port |
 
 ## Uninstallation
 
