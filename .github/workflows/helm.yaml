@@ -1,0 +1,39 @@
+name: helm
+on:
+  push:
+    branches:
+      - main
+      - release/*
+      - snapshot/*
+    tags:
+      - v*
+    paths:
+      - charts/**
+      - Makefile
+      - Makefile.tools
+  pull_request:
+    paths:
+      - charts/**
+      - Makefile
+      - Makefile.tools
+  merge_group:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.ref_name != 'main' }}
+
+jobs:
+  lint:
+    name: "lint and validate chart"
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v6
+      - uses: perses/github-actions@v0.11.0
+      - uses: ./.github/perses-ci/actions/setup_environment
+        with:
+          enable_go: true
+      - name: lint chart
+        run: make helm-lint
+      - name: template chart
+        run: make helm-template
