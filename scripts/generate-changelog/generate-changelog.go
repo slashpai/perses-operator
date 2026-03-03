@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"time"
 
@@ -27,12 +28,72 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var conventionalPrefixes = map[string]string{
+	"feat":     "FEATURE",
+	"fix":      "BUGFIX",
+	"docs":     "DOC",
+	"doc":      "DOC",
+	"refactor": "ENHANCEMENT",
+	"perf":     "ENHANCEMENT",
+	"test":     "IGNORE",
+	"ci":       "IGNORE",
+	"chore":    "IGNORE",
+}
+
+// conventionalRe matches "type(scope): msg" or "type: msg".
+var conventionalRe = regexp.MustCompile(`^([a-z]+)(?:\([^)]*\))?:\s*(.+)$`)
+
 func getPreviousTag() string {
 	previousVersion, err := exec.Command("git", "describe", "--tags", "--abbrev=0").Output()
 	if err != nil {
-		logrus.WithError(err).Fatal("unable to get the latest tag")
+		logrus.WithError(err).Fatal("unable to get the latest tag. Did you run 'git fetch upstream --tags'?")
 	}
 	return strings.TrimSpace(string(previousVersion))
+}
+
+// preprocessEntries rewrites conventional-commit messages into the
+// [CATEGORY] format the upstream changelog library expects,
+// and filters out dependency-bump noise.
+func preprocessEntries(entries []string) []string {
+	result := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if processed, ok := preprocessEntry(entry); ok {
+			result = append(result, processed)
+		}
+	}
+	return result
+}
+
+func preprocessEntry(entry string) (string, bool) {
+	parts := strings.SplitN(entry, " ", 2)
+	if len(parts) < 2 {
+		return "", false
+	}
+	hash, msg := parts[0], parts[1]
+
+	lower := strings.ToLower(msg)
+	if strings.HasPrefix(lower, "build(deps)") {
+		return "", false
+	}
+
+	if strings.HasPrefix(msg, "[") {
+		return entry, true
+	}
+
+	m := conventionalRe.FindStringSubmatch(msg)
+	if m == nil {
+		return entry, true
+	}
+
+	category, ok := conventionalPrefixes[m[1]]
+	if !ok {
+		return entry, true
+	}
+	if category == "IGNORE" {
+		return "", false
+	}
+
+	return fmt.Sprintf("%s [%s] %s", hash, category, m[2]), true
 }
 
 func generateChangelog(clog *changelog.Changelog, version string) string {
@@ -61,7 +122,6 @@ func Write(clog *changelog.Changelog, version string) {
 		buffer.WriteString("\n")
 		i++
 		if i == 1 {
-			// inject the new changelog entries after the title
 			buffer.WriteString("\n")
 			buffer.WriteString(generateChangelog(clog, version))
 		}
@@ -79,6 +139,7 @@ func main() {
 	entries := changelog.GetGitLogs(previousVersion)
 	version := flag.String("version", "", "release version")
 	flag.Parse()
+	entries = preprocessEntries(entries)
 	clog := changelog.New(entries)
 	Write(clog, *version)
 }

@@ -70,3 +70,113 @@ func TestGenerateChangelog(t *testing.T) {
 		})
 	}
 }
+
+func TestPreprocessEntry(t *testing.T) {
+	testSuite := []struct {
+		title    string
+		entry    string
+		expected string
+		kept     bool
+	}{
+		{
+			title:    "already categorized entry is unchanged",
+			entry:    "abc1234 [FEATURE] Add new widget (#100)",
+			expected: "abc1234 [FEATURE] Add new widget (#100)",
+			kept:     true,
+		},
+		{
+			title: "build(deps) entry is filtered",
+			entry: "abc1234 build(deps): Bump github.com/foo from 1.0 to 2.0 (#101)",
+			kept:  false,
+		},
+		{
+			title: "Build(deps) entry is filtered case-insensitively",
+			entry: "abc1234 Build(deps): Bump sigs.k8s.io/controller-runtime (#102)",
+			kept:  false,
+		},
+		{
+			title:    "feat: prefix maps to FEATURE",
+			entry:    "abc1234 feat: add dashboard tags (#200)",
+			expected: "abc1234 [FEATURE] add dashboard tags (#200)",
+			kept:     true,
+		},
+		{
+			title:    "feat(scope): prefix maps to FEATURE",
+			entry:    "abc1234 feat(api): add new CRD field (#201)",
+			expected: "abc1234 [FEATURE] add new CRD field (#201)",
+			kept:     true,
+		},
+		{
+			title:    "fix: prefix maps to BUGFIX",
+			entry:    "abc1234 fix: correct logging issues (#202)",
+			expected: "abc1234 [BUGFIX] correct logging issues (#202)",
+			kept:     true,
+		},
+		{
+			title:    "docs: prefix maps to DOC",
+			entry:    "abc1234 docs: update README (#203)",
+			expected: "abc1234 [DOC] update README (#203)",
+			kept:     true,
+		},
+		{
+			title:    "refactor: prefix maps to ENHANCEMENT",
+			entry:    "abc1234 refactor: simplify reconciler logic (#204)",
+			expected: "abc1234 [ENHANCEMENT] simplify reconciler logic (#204)",
+			kept:     true,
+		},
+		{
+			title:    "perf: prefix maps to ENHANCEMENT",
+			entry:    "abc1234 perf: reduce memory allocations (#208)",
+			expected: "abc1234 [ENHANCEMENT] reduce memory allocations (#208)",
+			kept:     true,
+		},
+		{
+			title: "chore: prefix is filtered",
+			entry: "abc1234 chore: update tooling (#205)",
+			kept:  false,
+		},
+		{
+			title: "ci: prefix is filtered",
+			entry: "abc1234 ci: fix linting job (#206)",
+			kept:  false,
+		},
+		{
+			title: "test: prefix is filtered",
+			entry: "abc1234 test: add unit tests (#207)",
+			kept:  false,
+		},
+		{
+			title:    "unrecognized prefix is passed through",
+			entry:    "abc1234 something unusual happened",
+			expected: "abc1234 something unusual happened",
+			kept:     true,
+		},
+	}
+	for _, test := range testSuite {
+		t.Run(test.title, func(t *testing.T) {
+			result, ok := preprocessEntry(test.entry)
+			assert.Equal(t, test.kept, ok)
+			if ok {
+				assert.Equal(t, test.expected, result)
+			}
+		})
+	}
+}
+
+func TestPreprocessEntries(t *testing.T) {
+	entries := []string{
+		"aaa1111 [FEATURE] Add widget (#1)",
+		"bbb2222 build(deps): Bump foo from 1.0 to 2.0 (#2)",
+		"ccc3333 feat: add bar (#3)",
+		"ddd4444 chore: update deps (#4)",
+		"eee5555 fix: resolve crash (#5)",
+		"fff6666 docs: improve guide (#6)",
+	}
+	expected := []string{
+		"aaa1111 [FEATURE] Add widget (#1)",
+		"ccc3333 [FEATURE] add bar (#3)",
+		"eee5555 [BUGFIX] resolve crash (#5)",
+		"fff6666 [DOC] improve guide (#6)",
+	}
+	assert.Equal(t, expected, preprocessEntries(entries))
+}
